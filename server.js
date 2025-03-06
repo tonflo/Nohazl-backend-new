@@ -27,7 +27,15 @@ app.post('/api/chat', async (req, res) => {
 
     try {
         // Om inga meddelanden skickas, använd bara det senaste
-        const chatMessages = messages || [{ role: 'user', content: req.body.message || 'Hej' }];
+        let chatMessages = messages || [{ role: 'user', content: req.body.message || 'Hej' }];
+
+        // Lägg till en systeminstruktion för att tvinga språk om language anges
+        if (language) {
+            chatMessages = [
+                { role: 'system', content: `Du är en hjälpsam assistent som alltid svarar på svenska.` },
+                ...chatMessages
+            ];
+        }
 
         const response = await axios.post(
             'https://api.openai.com/v1/chat/completions',
@@ -35,8 +43,6 @@ app.post('/api/chat', async (req, res) => {
                 model: 'gpt-3.5-turbo',
                 messages: chatMessages,
                 temperature: 0.7,
-                // Tvinga språk om specificerat (valfritt, kan förbättras med språkmodell)
-                ...(language && { prompt: `Svara på ${language}` }),
             },
             {
                 headers: {
@@ -49,8 +55,11 @@ app.post('/api/chat', async (req, res) => {
         const aiResponse = response.data.choices[0].message.content;
         res.json({ response: aiResponse });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Något gick fel med OpenAI API' });
+        console.error('OpenAI API-fel:', error.response?.data || error.message);
+        res.status(500).json({ 
+            error: 'Något gick fel med OpenAI API',
+            details: error.response?.data?.error?.message || error.message 
+        });
     }
 });
 
