@@ -7,23 +7,36 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// CORS för att tillåta frontend-anrop (justera origin efter behov)
+// CORS för att tillåta frontend-anrop
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*'); // Eller specificera din frontend-URL
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    res.header('Access-Control-Allow-Origin', 'http://localhost:8000');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
     next();
 });
 
+app.options('/api/chat', (req, res) => {
+    res.header('Access-Control-Allow-Origin', 'http://localhost:8000');
+    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.sendStatus(200);
+});
+
 app.post('/api/chat', async (req, res) => {
-    const { message } = req.body;
+    const { messages, language } = req.body;
 
     try {
+        // Om inga meddelanden skickas, använd bara det senaste
+        const chatMessages = messages || [{ role: 'user', content: req.body.message || 'Hej' }];
+
         const response = await axios.post(
             'https://api.openai.com/v1/chat/completions',
             {
                 model: 'gpt-3.5-turbo',
-                messages: [{ role: 'user', content: message }],
+                messages: chatMessages,
                 temperature: 0.7,
+                // Tvinga språk om specificerat (valfritt, kan förbättras med språkmodell)
+                ...(language && { prompt: `Svara på ${language}` }),
             },
             {
                 headers: {
