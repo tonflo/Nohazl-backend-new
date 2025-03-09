@@ -23,19 +23,30 @@ app.options('/api/chat', (req, res) => {
 });
 
 app.post('/api/chat', async (req, res) => {
-    const { messages, language } = req.body;
+    const { messages } = req.body;
 
     try {
         // Om inga meddelanden skickas, använd bara det senaste
         let chatMessages = messages || [{ role: 'user', content: req.body.message || 'Hej' }];
 
-        // Lägg till en systeminstruktion för att tvinga språk om language anges
-        if (language) {
-            chatMessages = [
-                { role: 'system', content: `Du är en hjälpsam assistent som alltid svarar på svenska.` },
-                ...chatMessages
-            ];
-        }
+        // Lägg till systeminstruktionen
+        const systemInstruction = {
+            role: 'system',
+            content: `Du ska alltid svara på det språk som användaren inleder konversationen med. Om första meddelandet är på svenska, håll dig till svenska. Om det är engelska, håll dig till engelska. Om det är spanska, håll dig till spanska, osv. 
+            Byt aldrig språk under en konversation, även om användaren senare skriver på ett annat språk.
+
+            Ditt mål är att:
+            - Ställa uttömmande följdfrågor för att få en så komplett bild av användarens behov som möjligt.
+            - Ge korta DIY-tips och fråga om användaren tror att de klarar det själv eller vill ha hjälp.
+            - Om användaren behöver hjälp, erbjuda att hitta alternativ på företag eller personer som kan hjälpa dem.
+            - Om en uppdragsförfrågan skapas, sammanfatta det tydligt och fråga om användaren vill få det skickat till sin e-post.
+            - Om en användare lämnar sin e-post, ska du bekräfta detta och meddela att vi återkommer med vidare hjälp.
+            - Håll en professionell men vänlig ton och guida användaren smidigt genom konversationen.
+            - Anpassa dynamiska rekommendationer baserat på tidigare frågor i chatten.`
+        };
+
+        // Lägg till systeminstruktionen i början av messages-arrayen
+        chatMessages = [systemInstruction, ...chatMessages];
 
         const response = await axios.post(
             'https://api.openai.com/v1/chat/completions',
